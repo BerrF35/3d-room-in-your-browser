@@ -72,11 +72,11 @@ export const PROJECTS = {
     architecture: [
       {
         name: 'D2Q9 Velocity Discretization',
-        detail: 'Simulates fluid distribution functions $f_0 \\dots f_8$ across 9 discrete velocity vectors on a 2D Cartesian lattice mesh.'
+        detail: 'Simulates fluid distribution functions f₀ … f₈ across 9 discrete velocity vectors on a 2D Cartesian lattice mesh.'
       },
       {
         name: 'BGK Collision Operator',
-        detail: 'Relaxes particle distributions toward local Maxwell-Boltzmann equilibrium f_i^eq governed by kinematic viscosity parameter $\\tau$.'
+        detail: 'Relaxes particle distributions toward local Maxwell-Boltzmann equilibrium fᵢᵉᑫ governed by kinematic viscosity parameter τ.'
       },
       {
         name: 'Zou-He & Bounce-Back Boundaries',
@@ -93,7 +93,7 @@ export const PROJECTS = {
       ['COMPUTE', 'WebGL 2.0 / GPU Accelerated Canvas'],
       ['TARGETS', 'NACA 0012, NACA 2412, Cylinders, Custom'],
       ['FRAME RATE', '60 FPS Real-Time Deterministic'],
-      ['METRICS', 'Re, Dynamic Pressure q, $C_L$, $C_D$, $L/D$'],
+      ['METRICS', 'Re, Dynamic Pressure q, C_L, C_D, L/D'],
       ['SOURCE', 'GitHub (BerrF35/Windsim)']
     ],
     images: [

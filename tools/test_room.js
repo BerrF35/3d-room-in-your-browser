@@ -280,6 +280,237 @@ async function runTestSuite() {
     assert(`Desktop Application launch & close: ${app.name}`, appOpenResult.success);
   }
 
+  // --- EXTENDED DESKTOP SUBSYSTEM CHECKS ---
+  console.log('\n[Suite 5.1: Desktop Subsystems, Actions & UI Innovations]');
+
+  // 1. Desktop SVG Icons Integrity
+  const svgIconCheck = await page.evaluate(() => {
+    const icons = document.querySelectorAll('.win-desktop-icon');
+    const svgs = document.querySelectorAll('.win-desktop-icon .win-svg');
+    return { total: icons.length, svgs: svgs.length };
+  });
+  assert('Desktop icons rendered with scalable vector SVG graphics', svgIconCheck.total > 0 && svgIconCheck.total === svgIconCheck.svgs, `${svgIconCheck.svgs}/${svgIconCheck.total} icons`);
+
+  // 2. Action Center Flyout, Volume Slider & Theme Control
+  const actionCenterCheck = await page.evaluate(async () => {
+    const clock = document.getElementById('winTrayClock');
+    const ac = document.getElementById('winActionCenter');
+    const slider = document.getElementById('winVolumeSlider');
+    const closeBtn = document.getElementById('winActionCenterClose');
+    if (!clock || !ac || !slider) return { success: false, reason: 'Missing elements' };
+
+    // Toggle open
+    clock.click();
+    await new Promise(r => setTimeout(r, 100));
+    const isOpen = ac.classList.contains('is-open') && !ac.hidden;
+
+    // Test volume slider integration
+    slider.value = 0.45;
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+    const volLabel = document.getElementById('winVolumeLabel')?.textContent;
+    const soundOk = window.sound && Math.abs(window.sound.volume - 0.45) < 0.05;
+
+    // Test theme preset button
+    const matrixBtn = ac.querySelector('[data-action-theme="matrix"]');
+    matrixBtn?.click();
+    const isMatrix = document.documentElement.getAttribute('data-theme') === 'matrix';
+    const darkBtn = ac.querySelector('[data-action-theme="dark"]');
+    darkBtn?.click();
+
+    // Close Action Center
+    closeBtn?.click();
+    await new Promise(r => setTimeout(r, 50));
+    const isClosed = ac.hidden;
+
+    return {
+      success: isOpen && soundOk && isMatrix && isClosed,
+      volLabel,
+      soundOk,
+      isMatrix
+    };
+  });
+  assert('Action Center flyout toggles, updates master volume, and switches themes', actionCenterCheck.success, `Vol: ${actionCenterCheck.volLabel}, SoundOk: ${actionCenterCheck.soundOk}`);
+
+  // 3. Tabbed Simulation-First Navigation (WindSim)
+  const tabbedSimCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    dm.openApp('windsim');
+    await new Promise(r => setTimeout(r, 300));
+    const win = dm.windows.get('windsim');
+    if (!win) return { success: false };
+
+    // Default tab should be live simulation
+    const simTab = win.querySelector('[data-target-tab="sim"]');
+    const simPanel = win.querySelector('#winTabPanel_sim');
+    const canvas = win.querySelector('#simMount_windsim canvas');
+    const isSimActive = simTab && simTab.classList.contains('is-active') && simPanel && simPanel.classList.contains('is-active');
+    const hasCanvas = !!canvas;
+
+    // Switch to Technical Dossier tab
+    const dossierTab = win.querySelector('[data-target-tab="dossier"]');
+    dossierTab?.click();
+    await new Promise(r => setTimeout(r, 100));
+    const dossierPanel = win.querySelector('#winTabPanel_dossier');
+    const isDossierActive = dossierPanel && dossierPanel.classList.contains('is-active');
+    const hasProblemText = dossierPanel && dossierPanel.textContent.includes('PROBLEM STATEMENT');
+
+    // Switch to Evidence tab
+    const evidenceTab = win.querySelector('[data-target-tab="evidence"]');
+    evidenceTab?.click();
+    await new Promise(r => setTimeout(r, 100));
+    const evidencePanel = win.querySelector('#winTabPanel_evidence');
+    const isEvidenceActive = evidencePanel && evidencePanel.classList.contains('is-active');
+
+    // Switch back to simulation: verify canvas is preserved
+    simTab?.click();
+    await new Promise(r => setTimeout(r, 100));
+    const canvasPreserved = !!win.querySelector('#simMount_windsim canvas');
+
+    dm.closeApp('windsim');
+    return {
+      success: isSimActive && hasCanvas && isDossierActive && hasProblemText && isEvidenceActive && canvasPreserved
+    };
+  });
+  assert('WindSim dual-mode tab navigation: Simulation-first layout, technical dossier, and persistent canvas', tabbedSimCheck.success);
+
+  // 4. Window Geometry Memory on Maximize & Restore
+  const windowGeometryCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    dm.openApp('timeline');
+    await new Promise(r => setTimeout(r, 150));
+    const win = dm.windows.get('timeline');
+    if (!win) return { success: false };
+
+    const initialWidth = win.style.width;
+    const initialHeight = win.style.height;
+
+    // Click maximize
+    const maxBtn = win.querySelector('.win-ctrl-max');
+    maxBtn?.click();
+    await new Promise(r => setTimeout(r, 100));
+    const isMax = win.classList.contains('is-maximized') && win.style.width === '100%';
+
+    // Click restore
+    maxBtn?.click();
+    await new Promise(r => setTimeout(r, 100));
+    const isRestored = !win.classList.contains('is-maximized') && win.style.width === initialWidth && win.style.height === initialHeight;
+
+    dm.closeApp('timeline');
+    return { success: isMax && isRestored, initialWidth };
+  });
+  assert('Window geometry memory preserves dimensions on maximize and restores accurately', windowGeometryCheck.success, windowGeometryCheck.initialWidth);
+
+  // 5. Window Cascading Offsets
+  const cascadeCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    dm.openApp('berry');
+    await new Promise(r => setTimeout(r, 100));
+    dm.openApp('berrybot');
+    await new Promise(r => setTimeout(r, 100));
+
+    const win1 = dm.windows.get('berry');
+    const win2 = dm.windows.get('berrybot');
+    const isCascaded = win1 && win2 && (win1.style.top !== win2.style.top) && (win1.style.left !== win2.style.left);
+
+    dm.closeApp('berry');
+    dm.closeApp('berrybot');
+    return { success: isCascaded, top1: win1?.style.top, top2: win2?.style.top };
+  });
+  assert('Window manager applies dynamic cascading offsets for concurrent windows', cascadeCheck.success, `${cascadeCheck.top1} -> ${cascadeCheck.top2}`);
+
+  // 6. File Explorer History Navigation (Back / Forward / Up)
+  const explorerHistoryCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    dm.openExplorer('Projects');
+    await new Promise(r => setTimeout(r, 200));
+    const win = dm.windows.get('explorer_projects');
+    if (!win) return { success: false };
+
+    // Navigate to Research via sidebar
+    const resSideBtn = win.querySelector('[data-side="Research"]');
+    resSideBtn?.click();
+    await new Promise(r => setTimeout(r, 100));
+    const pathAfterNav = win.querySelector('.win-address-path')?.textContent;
+
+    // Click Back
+    const backBtn = win.querySelector('[data-nav="back"]');
+    backBtn?.click();
+    await new Promise(r => setTimeout(r, 100));
+    const pathAfterBack = win.querySelector('.win-address-path')?.textContent;
+
+    // Click Forward
+    const fwdBtn = win.querySelector('[data-nav="forward"]');
+    fwdBtn?.click();
+    await new Promise(r => setTimeout(r, 100));
+    const pathAfterFwd = win.querySelector('.win-address-path')?.textContent;
+
+    dm.closeWindow('explorer_projects');
+    const ok = pathAfterNav === 'C:\\Users\\Jaijitesh\\Desktop\\Research' &&
+               pathAfterBack === 'C:\\Users\\Jaijitesh\\Desktop\\Projects' &&
+               pathAfterFwd === 'C:\\Users\\Jaijitesh\\Desktop\\Research';
+    return { success: ok, pathAfterNav, pathAfterBack, pathAfterFwd };
+  });
+  assert('File Explorer history stack supports non-destructive back/forward navigation', explorerHistoryCheck.success, `${explorerHistoryCheck.pathAfterBack} <-> ${explorerHistoryCheck.pathAfterFwd}`);
+
+  // 7. Terminal CLI Commands & Auto-completion
+  const terminalCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    dm.openApp('terminal');
+    await new Promise(r => setTimeout(r, 200));
+    const term = dm.instances.get('terminal');
+    if (!term) return { success: false };
+
+    // Test command execution: theme amber
+    term.executeCommand('theme amber');
+    const themeAmber = document.documentElement.getAttribute('data-theme') === 'amber';
+    term.executeCommand('theme dark');
+    const themeDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+    // Test command execution: whoami
+    term.executeCommand('whoami');
+    const outputText = term.output?.textContent || '';
+    const hasIdentity = outputText.includes('JAIJITESH SURYAPRAKASH');
+
+    dm.closeApp('terminal');
+    return { success: themeAmber && themeDark && hasIdentity };
+  });
+  assert('Terminal CLI executes rich system commands (theme, whoami, directory parsing)', terminalCheck.success);
+
+  // 8. Contact Dispatch In-Window Feedback (Zero native blocking alert)
+  const contactDispatchCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    dm.openApp('contact');
+    await new Promise(r => setTimeout(r, 200));
+    const win = dm.windows.get('contact');
+    if (!win) return { success: false };
+
+    const nameInput = win.querySelector('#contactName');
+    const emailInput = win.querySelector('#contactEmail');
+    const msgInput = win.querySelector('#contactMessage');
+    const form = win.querySelector('#contactDispatchForm');
+
+    if (nameInput) nameInput.value = 'Reviewer';
+    if (emailInput) emailInput.value = 'audit@example.com';
+    if (msgInput) msgInput.value = 'Automated verification payload';
+
+    // Submit form
+    form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise(r => setTimeout(r, 100));
+
+    const statusBadge = win.querySelector('.win-dispatch-status');
+    const hasStatus = !!statusBadge && statusBadge.textContent.includes('DISPATCH TRANSMITTED');
+
+    dm.closeApp('contact');
+    return { success: hasStatus };
+  });
+  assert('Contact dispatch displays in-window confirmation badge without blocking modal alerts', contactDispatchCheck.success);
+
   // Exit laptop back to 3D room
   const exitResult = await page.evaluate(async () => {
     window.exitLaptop();

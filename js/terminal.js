@@ -19,6 +19,14 @@ export class TerminalEngine {
     this.historyIndex = -1;
     this.currentPath = 'C:\\Users\\Jaijitesh';
 
+    this.COMMANDS = [
+      'help', 'dir', 'ls', 'cd', 'type', 'cat', 'cls', 'clear', 'exit',
+      'whoami', 'about', 'dossier', 'projects', 'research', 'hardware', 'cad',
+      'hackathons', 'skills', 'stack', 'contact', 'timeline', 'github', 'linkedin',
+      'systeminfo', 'neofetch', 'theme', 'bench', 'room', 'volume', 'ver', 'date', 'time',
+      'windsim', 'berry', 'berrybot', 'impactx', 'farmassist', 'vinhack', 'explorer', 'matrix'
+    ];
+
     this.fs = {
       'C:\\Users\\Jaijitesh': {
         dirs: ['Desktop', 'Documents', 'Downloads', 'Projects', 'Research', 'Hardware'],
@@ -72,7 +80,7 @@ export class TerminalEngine {
           <div class="cmd-banner">
             <div>Microsoft Windows [Version 10.0.22631.3803]</div>
             <div>(c) Microsoft Corporation. All rights reserved.</div>
-            <div style="margin-top: 8px; color: #888;">JAIJITESH.OS CLI Environment • Type 'help' for command directory.</div>
+            <div style="margin-top: 8px; color: #888;">JAIJITESH.OS CLI Environment • Type 'help' for command directory • TAB for auto-completion.</div>
             <div style="margin-bottom: 12px;"></div>
           </div>
           <div class="cmd-output" id="termOutput"></div>
@@ -99,6 +107,12 @@ export class TerminalEngine {
 
     this.input.addEventListener('keydown', (e) => {
       sound.click(700, 0.01);
+
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        this.handleTabCompletion();
+        return;
+      }
 
       if (e.key === 'ArrowUp') {
         e.preventDefault();
@@ -131,6 +145,33 @@ export class TerminalEngine {
       this.executeCommand(raw);
       this.body.scrollTop = this.body.scrollHeight;
     });
+  }
+
+  handleTabCompletion() {
+    const val = this.input.value;
+    const parts = val.split(' ');
+    const lastWord = parts[parts.length - 1].toLowerCase();
+
+    if (!lastWord) return;
+
+    if (parts.length === 1) {
+      // Complete command
+      const match = this.COMMANDS.find(c => c.startsWith(lastWord));
+      if (match) {
+        this.input.value = match;
+        sound.tick(1200);
+      }
+    } else {
+      // Complete path or file in current directory
+      const node = this.fs[this.currentPath] || { dirs: [], files: [] };
+      const candidates = [...node.dirs, ...node.files.map(f => f.name)];
+      const match = candidates.find(c => c.toLowerCase().startsWith(lastWord));
+      if (match) {
+        parts[parts.length - 1] = match;
+        this.input.value = parts.join(' ');
+        sound.tick(1200);
+      }
+    }
   }
 
   appendLine(text) {
@@ -169,6 +210,9 @@ SYSTEM COMMANDS:
   LINKEDIN       Opens the verified LinkedIn profile.
   SYSTEMINFO     Displays workstation telemetry and engineering specs.
   NEOFETCH       Displays system ASCII logo and host specifications.
+  THEME &lt;mode&gt;   Switches theme (dark | matrix | amber | light).
+  VOLUME &lt;0-100&gt; Sets master audio gain percentage.
+  BENCH / ROOM   Exits laptop and returns camera to 3D engineering workbench.
   DIR / LS       Displays list of files and subdirectories.
   CD             Displays or changes current working directory.
   TYPE / CAT     Displays contents of a text or document file.
@@ -336,6 +380,43 @@ DIRECT CONTACT &amp; DISPATCH:
         `);
         break;
 
+      case 'theme':
+        {
+          const mode = (arg || '').toLowerCase();
+          const valid = ['dark', 'matrix', 'amber', 'light'];
+          if (valid.includes(mode)) {
+            document.documentElement.setAttribute('data-theme', mode);
+            window.set3DTheme?.(mode);
+            this.appendLine(`Theme updated to '${mode}'.`);
+            sound.powerOn();
+          } else {
+            this.appendLine(`Usage: theme &lt;dark | matrix | amber | light&gt;. Current: ${document.documentElement.getAttribute('data-theme') || 'dark'}`);
+          }
+        }
+        break;
+
+      case 'volume':
+        {
+          const num = parseInt(arg, 10);
+          if (!isNaN(num) && num >= 0 && num <= 100) {
+            const gain = num / 100;
+            sound.setVolume(gain);
+            this.appendLine(`Master volume set to ${num}%.`);
+            sound.tick(1200);
+          } else {
+            this.appendLine('Usage: volume &lt;0-100&gt; (e.g. volume 80)');
+          }
+        }
+        break;
+
+      case 'bench':
+      case 'room':
+        this.appendLine('Returning camera to 3D Engineering Workbench...');
+        sound.powerOn();
+        this.onNavigate?.('close_current');
+        this.onHardware?.(null);
+        break;
+
       case 'ver':
         this.appendLine('Microsoft Windows [Version 10.0.22631.3803] // JAIJITESH.OS v2.6.4');
         break;
@@ -410,7 +491,6 @@ DIRECT CONTACT &amp; DISPATCH:
         break;
 
       // Easter Eggs
-      case 'berry':
       case 'dog':
         this.appendLine(`🐶 Berry: Loyal Belgian Malinois lab companion. Telemetry: 100% Good Boy.`);
         sound.sonarPing(1200);
@@ -431,9 +511,14 @@ DIRECT CONTACT &amp; DISPATCH:
         break;
 
       case 'matrix':
-        document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'matrix' ? 'dark' : 'matrix');
-        this.appendLine('Theme toggled to Matrix phosphor mode.');
-        sound.powerOn();
+        {
+          const cur = document.documentElement.getAttribute('data-theme');
+          const nxt = cur === 'matrix' ? 'dark' : 'matrix';
+          document.documentElement.setAttribute('data-theme', nxt);
+          window.set3DTheme?.(nxt);
+          this.appendLine(`Theme set to ${nxt}.`);
+          sound.powerOn();
+        }
         break;
 
       default:

@@ -5,6 +5,7 @@ class SoundEngine {
     this.ctx = null;
     this.muted = false;
     this.masterGain = null;
+    this.volume = 0.75;
   }
 
   ensureContext() {
@@ -25,9 +26,18 @@ class SoundEngine {
   toggleMute() {
     this.muted = !this.muted;
     if (this.masterGain) {
-      this.masterGain.gain.value = this.muted ? 0 : 0.12;
+      this.masterGain.gain.value = this.muted ? 0 : (this.volume || 1.0) * 0.12;
     }
     return !this.muted;
+  }
+
+  setVolume(vol) {
+    this.volume = Math.max(0, Math.min(1, vol));
+    this.muted = this.volume === 0;
+    if (this.masterGain) {
+      this.masterGain.gain.value = this.muted ? 0 : this.volume * 0.12;
+    }
+    return this.volume;
   }
 
   playTone(freq, type = 'sine', duration = 0.08, gainVal = 0.15) {
@@ -115,3 +125,6 @@ class SoundEngine {
 }
 
 export const sound = new SoundEngine();
+if (typeof window !== 'undefined') {
+  window.sound = sound;
+}

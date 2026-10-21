@@ -4,6 +4,7 @@ class SoundEngine {
     this.ctx = null;
     this.muted = false;
     this.masterGain = null;
+    this.volume = 0.75;
   }
 
   init() {
@@ -29,9 +30,18 @@ class SoundEngine {
   toggleMute() {
     this.muted = !this.muted;
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setValueAtTime(this.muted ? 0 : 0.35, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(this.muted ? 0 : (this.volume || 1.0) * 0.35, this.ctx.currentTime);
     }
     return this.muted;
+  }
+
+  setVolume(vol) {
+    this.volume = Math.max(0, Math.min(1, vol));
+    this.muted = this.volume === 0;
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume * 0.35, this.ctx.currentTime);
+    }
+    return this.volume;
   }
 
   // Mechanical switch click (crisp tactile feedback)
@@ -218,3 +228,6 @@ class SoundEngine {
 }
 
 export const sound = new SoundEngine();
+if (typeof window !== 'undefined') {
+  window.sound = sound;
+}
