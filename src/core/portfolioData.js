@@ -554,6 +554,7 @@ export const HARDWARE_DEFINITIONS = {
     benchRotation: { x: 0, y: -0.65, z: 0 }
   }
 };
+HARDWARE_DEFINITIONS.rpi = HARDWARE_DEFINITIONS.raspberry;
 
 export const TIMELINE_MILESTONES = [
   {

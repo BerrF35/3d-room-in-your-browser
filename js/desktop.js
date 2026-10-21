@@ -48,6 +48,14 @@ export class DesktopManager {
     if (ctx) ctx.style.display = 'none';
   }
 
+  launchApp(appId) {
+    return this.openApp(appId);
+  }
+
+  closeApp(appId) {
+    return this.closeWindow(appId);
+  }
+
   getIconHtml(type) {
     switch (type) {
       case 'folder':

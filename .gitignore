@@ -5,6 +5,14 @@ node_modules/
 *.zip
 Thumbs.db
 
+# Preserved local original uncompressed raw assets (128MB)
+assets/*.original.glb
+
+# Test results & browser automation caches
+test-results/
+playwright-report/
+.playwright-mcp/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

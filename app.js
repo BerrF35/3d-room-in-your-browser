@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 window.THREE = THREE;
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { sound } from './js/audio.js';
@@ -177,6 +178,7 @@ const world = {
   }
 };
 
+window.renderer = renderer;
 window.camera = camera;
 window.scene = scene;
 window.world = world;
@@ -218,7 +220,19 @@ function easeCamera(toPos, toTarget, duration = 0.95, onComplete) {
   if (prefersReducedMotion) duration = 0.001;
   const t = {
     px: camera.position.x, py: camera.position.y, pz: camera.position.z,
-    tx: controls.target.x, ty: controls.target.y, tz: controls.target.z
+    tx: controls ? controls.target.x : 0, ty: controls ? controls.target.y : 0, tz: controls ? controls.target.z : 0
+  };
+
+  let completed = false;
+  const finish = () => {
+    if (completed) return;
+    completed = true;
+    camera.position.copy(toPos);
+    if (controls) {
+      controls.target.copy(toTarget);
+      controls.update();
+    }
+    onComplete?.();
   };
 
   motion.killTweensOf(t);
@@ -229,16 +243,16 @@ function easeCamera(toPos, toTarget, duration = 0.95, onComplete) {
     ease: 'power3.inOut',
     onUpdate: () => {
       camera.position.set(t.px, t.py, t.pz);
-      controls.target.set(t.tx, t.ty, t.tz);
-      controls.update();
+      if (controls) {
+        controls.target.set(t.tx, t.ty, t.tz);
+        controls.update();
+      }
     },
-    onComplete: () => {
-      camera.position.copy(toPos);
-      controls.target.copy(toTarget);
-      controls.update();
-      onComplete?.();
-    }
+    onComplete: finish
   });
+
+  // Safety fallback in case GSAP ticker or rAF is throttled in background/headless tab
+  setTimeout(finish, Math.round(duration * 1000) + 150);
 }
 
 // =============================================================================
@@ -277,6 +291,13 @@ async function loadAuthoritativeScene() {
   if (!stage) return;
   return new Promise((resolve, reject) => {
     const loader = new GLTFLoader();
+    try {
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('assets/draco/');
+      loader.setDRACOLoader(dracoLoader);
+    } catch (e) {
+      console.warn('DRACOLoader initialization fallback:', e);
+    }
     loader.load(
       'assets/jaijitesh_room.glb',
       (gltf) => {
@@ -455,7 +476,7 @@ async function loadAuthoritativeScene() {
           const pct = Math.round((xhr.loaded / xhr.total) * 100);
           setLoading(Math.min(99, Math.max(10, pct)));
         } else {
-          setLoading(Math.min(95, 10 + Math.round((xhr.loaded / 128140208) * 85)));
+          setLoading(Math.min(95, 10 + Math.round((xhr.loaded / 15061548) * 85)));
         }
       },
       (err) => {
@@ -615,6 +636,7 @@ function toggleSwitchButton(id) {
     toggleRoomSystems();
   }
 }
+window.toggleSwitchButton = toggleSwitchButton;
 
 function toggleRoomSystems() {
   sound.click(750, 0.04);
@@ -627,6 +649,7 @@ function toggleRoomSystems() {
   if (world.lights.upperCeiling) world.lights.upperCeiling.intensity = upInt;
   showToast(world.switchStates.ceiling ? 'ROOM SYSTEMS // POWER: ACTIVE' : 'ROOM SYSTEMS // POWER: ECO-STANDBY');
 }
+window.toggleRoomSystems = toggleRoomSystems;
 
 // =============================================================================
 // YELLOW DOOR ACCESS RESTRICTED ALERT
@@ -641,6 +664,7 @@ function triggerDoorAccessDenied() {
     }, 3200);
   }
 }
+window.triggerDoorAccessDenied = triggerDoorAccessDenied;
 
 // =============================================================================
 // BUILD WORLD & ASSET LOADING SEQUENCE
@@ -929,7 +953,10 @@ function deactivateFPOV() {
 function requestPointerLock() {
   if (canvas && !document.pointerLockElement) {
     try {
-      canvas.requestPointerLock();
+      const p = canvas.requestPointerLock();
+      if (p && typeof p.catch === 'function') {
+        p.catch((e) => console.warn('Pointer lock request ignored:', e));
+      }
     } catch (e) {
       console.warn('Pointer lock request ignored:', e);
     }
@@ -1077,6 +1104,7 @@ function updateFPOVMovement(delta) {
     raycastCrosshair();
   }
 }
+window.updateFPOVMovement = updateFPOVMovement;
 
 function clampRoomCollision(nextPos, prevPos) {
   // Eye height limit
@@ -1202,14 +1230,23 @@ function focusLaptop(targetApp = null) {
     if (controls) controls.enabled = false;
     bootSystem();
     if (targetApp && world.desktopManager) {
-      setTimeout(() => world.desktopManager.launchApp(targetApp), 300);
+      setTimeout(() => {
+        if (typeof world.desktopManager.launchApp === 'function') {
+          world.desktopManager.launchApp(targetApp);
+        } else if (typeof world.desktopManager.openApp === 'function') {
+          world.desktopManager.openApp(targetApp);
+        }
+      }, 300);
     }
   });
 }
 window.focusLaptop = focusLaptop;
 
 function bootSystem() {
-  if (state.screenState === 'desktop') return;
+  if (state.screenState === 'desktop') {
+    openScreen();
+    return;
+  }
   state.screenState = 'boot';
   try { sound.bootChime?.(); } catch (_) {}
   setTimeout(() => {
