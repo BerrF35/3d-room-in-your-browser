@@ -260,8 +260,11 @@ async function runTestSuite() {
   const appList = [
     { id: 'terminal', name: 'Command Prompt' },
     { id: 'windsim', name: 'WindSim LBM Aerodynamic CFD' },
+    { id: 'filesim', name: 'File Allocation Simulator' },
     { id: 'berrybot', name: 'BerryBot Robotics Telemetry' },
     { id: 'berry', name: 'Berry AI Agent Sandbox' },
+    { id: 'speaksafe', name: 'SpeakSafe Voice Forensics' },
+    { id: 'spherical_bot', name: 'Spherical Bot BALLZ' },
     { id: 'timeline', name: 'Engineering Timeline' },
     { id: 'contact', name: 'Contact Dispatch' }
   ];
