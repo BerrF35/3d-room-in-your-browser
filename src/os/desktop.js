@@ -394,10 +394,23 @@ export class DesktopManager {
       });
     });
 
-    // Alt+Tab HUD Window Switcher
+    // Alt+Tab HUD Window Switcher & Escape Dismissal
     let isAltDown = false;
     window.addEventListener('keydown', (e) => {
-      if (e.altKey && e.key === 'Tab') {
+      if (e.key === 'Escape') {
+        const hud = this.container.querySelector('#winAltTabHud');
+        if (hud && (!hud.hidden || hud.classList.contains('is-open'))) {
+          this.hideAltTabHud(false);
+        } else if (lightbox && !lightbox.hidden) {
+          hideLightbox();
+        } else if (this.isStartOpen) {
+          this.closeStartMenu();
+        } else if (this.isActionCenterOpen) {
+          this.closeActionCenter();
+        } else if (ctxMenu && ctxMenu.style.display !== 'none') {
+          ctxMenu.style.display = 'none';
+        }
+      } else if (e.altKey && e.key === 'Tab') {
         e.preventDefault();
         isAltDown = true;
         this.showAltTabHud();
@@ -407,7 +420,7 @@ export class DesktopManager {
     window.addEventListener('keyup', (e) => {
       if (isAltDown && (e.key === 'Alt' || !e.altKey)) {
         isAltDown = false;
-        this.hideAltTabHud();
+        this.hideAltTabHud(true);
       }
     });
 
@@ -526,10 +539,9 @@ export class DesktopManager {
     });
 
     showDesktop.addEventListener('click', () => {
-      this.windows.forEach((win) => {
-        win.classList.add('is-minimized');
+      this.windows.forEach((win, id) => {
+        this.minimizeWindow(id);
       });
-      this.updateTaskbar();
       sound.click(300, 0.02);
     });
 
@@ -735,16 +747,14 @@ export class DesktopManager {
     sound.tick(1300);
   }
 
-  hideAltTabHud() {
+  hideAltTabHud(commit = true) {
     const hud = this.container.querySelector('#winAltTabHud');
     if (!hud) return;
     hud.hidden = true;
     hud.classList.remove('is-open');
 
-    if (this.pendingAltTabId && this.windows.has(this.pendingAltTabId)) {
-      const win = this.windows.get(this.pendingAltTabId);
-      win.classList.remove('is-minimized');
-      this.focusWindow(this.pendingAltTabId);
+    if (commit && this.pendingAltTabId && this.windows.has(this.pendingAltTabId)) {
+      this.restoreWindow(this.pendingAltTabId);
       sound.click(650, 0.02);
     }
     this.pendingAltTabId = null;
@@ -767,8 +777,11 @@ export class DesktopManager {
     const windowId = `explorer_${folderKey.toLowerCase()}`;
     if (this.windows.has(windowId)) {
       const win = this.windows.get(windowId);
-      win.classList.remove('is-minimized');
-      this.focusWindow(windowId);
+      if (win.classList.contains('is-minimized') || win.classList.contains('win-window--minimizing')) {
+        this.restoreWindow(windowId);
+      } else {
+        this.focusWindow(windowId);
+      }
       return;
     }
 
@@ -780,13 +793,20 @@ export class DesktopManager {
     const cascadeOffset = ((this.windowCascadeCount - 1) % 6) * 26;
 
     const win = document.createElement('div');
-    win.className = 'win-window';
+    win.className = 'win-window win-window--entering';
     win.id = `win_${windowId}`;
     win.style.zIndex = this.highestZ;
     win.style.top = `${40 + cascadeOffset}px`;
     win.style.left = `${60 + cascadeOffset}px`;
     win.style.width = '840px';
     win.style.height = '520px';
+
+    const onEnterEnd = () => {
+      win.removeEventListener('animationend', onEnterEnd);
+      win.classList.remove('win-window--entering');
+    };
+    win.addEventListener('animationend', onEnterEnd, { once: true });
+    setTimeout(onEnterEnd, 260);
 
     win._history = [folderKey];
     win._historyIdx = 0;
@@ -808,38 +828,43 @@ export class DesktopManager {
       });
 
       if (filesContainer) {
-        filesContainer.innerHTML = fData.items.map(item => `
-          <div class="win-file-item" data-id="${item.id}" data-type="${item.type}" data-target="${item.target}" tabindex="0">
-            ${this.getIconHtml(item.iconType)}
-            <div>
-              <span class="win-file-name">${item.name}</span>
-              <span class="win-file-desc">${item.desc}</span>
+        filesContainer.classList.add('is-transitioning');
+        setTimeout(() => {
+          filesContainer.innerHTML = fData.items.map(item => `
+            <div class="win-file-item" data-id="${item.id}" data-type="${item.type}" data-target="${item.target}" tabindex="0">
+              ${this.getIconHtml(item.iconType)}
+              <div>
+                <span class="win-file-name">${item.name}</span>
+                <span class="win-file-desc">${item.desc}</span>
+              </div>
+              <span class="win-file-size">${item.size}</span>
             </div>
-            <span class="win-file-size">${item.size}</span>
-          </div>
-        `).join('');
+          `).join('');
 
-        filesContainer.querySelectorAll('.win-file-item').forEach(item => {
-          item.addEventListener('click', () => {
-            filesContainer.querySelectorAll('.win-file-item').forEach(i => i.classList.remove('is-selected'));
-            item.classList.add('is-selected');
-            sound.tick(1200);
+          filesContainer.querySelectorAll('.win-file-item').forEach(item => {
+            item.addEventListener('click', () => {
+              filesContainer.querySelectorAll('.win-file-item').forEach(i => i.classList.remove('is-selected'));
+              item.classList.add('is-selected');
+              sound.tick(1200);
+            });
+
+            item.addEventListener('dblclick', () => {
+              const type = item.dataset.type;
+              const target = item.dataset.target;
+              if (type === 'app') {
+                this.openApp(target);
+              } else if (type === 'doc') {
+                this.openDocument(target);
+              } else if (type === 'cad') {
+                this.onHardwareInspect?.(target);
+                this.onExit?.();
+              }
+              sound.click(600, 0.03);
+            });
           });
 
-          item.addEventListener('dblclick', () => {
-            const type = item.dataset.type;
-            const target = item.dataset.target;
-            if (type === 'app') {
-              this.openApp(target);
-            } else if (type === 'doc') {
-              this.openDocument(target);
-            } else if (type === 'cad') {
-              this.onHardwareInspect?.(target);
-              this.onExit?.();
-            }
-            sound.click(600, 0.03);
-          });
-        });
+          filesContainer.classList.remove('is-transitioning');
+        }, 80);
       }
     };
 
@@ -848,6 +873,7 @@ export class DesktopManager {
         <div class="win-title">
           <div class="win-title-icon">${this.getIconHtml('folder')}</div>
           <span class="win-title-text">${folderData.title}</span>
+          <div class="win-titlebar__telemetry"><span class="telemetry-led"></span><span>SYS.FS // 0x4B</span></div>
         </div>
         <div class="win-controls">
           <button class="win-ctrl-btn win-ctrl-min" data-action="min" type="button" title="Minimize">—</button>
@@ -953,8 +979,11 @@ export class DesktopManager {
     const windowId = appId;
     if (this.windows.has(windowId)) {
       const win = this.windows.get(windowId);
-      win.classList.remove('is-minimized');
-      this.focusWindow(windowId);
+      if (win.classList.contains('is-minimized') || win.classList.contains('win-window--minimizing')) {
+        this.restoreWindow(windowId);
+      } else {
+        this.focusWindow(windowId);
+      }
       return;
     }
 
@@ -1015,7 +1044,7 @@ export class DesktopManager {
     const cascadeOffset = ((this.windowCascadeCount - 1) % 6) * 26;
 
     const win = document.createElement('div');
-    win.className = 'win-window';
+    win.className = 'win-window win-window--entering';
     win.id = `win_${windowId}`;
     win.style.zIndex = this.highestZ;
     win.style.top = `${32 + cascadeOffset}px`;
@@ -1023,11 +1052,21 @@ export class DesktopManager {
     win.style.width = defaultWidth;
     win.style.height = defaultHeight;
 
+    const onEnterEnd = () => {
+      win.removeEventListener('animationend', onEnterEnd);
+      win.classList.remove('win-window--entering');
+    };
+    win.addEventListener('animationend', onEnterEnd, { once: true });
+    setTimeout(onEnterEnd, 260);
+
+    const pid = Math.floor(1000 + Math.random() * 9000);
+
     win.innerHTML = `
       <div class="win-titlebar">
         <div class="win-title">
           <div class="win-title-icon">${this.getIconHtml(iconType)}</div>
           <span>${title}</span>
+          <div class="win-titlebar__telemetry"><span class="telemetry-led"></span><span>PID:${pid} // ACTIVE</span></div>
         </div>
         <div class="win-controls">
           <button class="win-ctrl-btn win-ctrl-min" data-action="min" type="button" title="Minimize">—</button>
@@ -1058,8 +1097,11 @@ export class DesktopManager {
     const windowId = `doc_${fileId}`;
     if (this.windows.has(windowId)) {
       const win = this.windows.get(windowId);
-      win.classList.remove('is-minimized');
-      this.focusWindow(windowId);
+      if (win.classList.contains('is-minimized') || win.classList.contains('win-window--minimizing')) {
+        this.restoreWindow(windowId);
+      } else {
+        this.focusWindow(windowId);
+      }
       return;
     }
 
@@ -1068,13 +1110,20 @@ export class DesktopManager {
     const cascadeOffset = ((this.windowCascadeCount - 1) % 6) * 26;
 
     const win = document.createElement('div');
-    win.className = 'win-window';
+    win.className = 'win-window win-window--entering';
     win.id = `win_${windowId}`;
     win.style.zIndex = this.highestZ;
     win.style.top = `${48 + cascadeOffset}px`;
     win.style.left = `${64 + cascadeOffset}px`;
     win.style.width = '800px';
     win.style.height = '540px';
+
+    const onEnterEnd = () => {
+      win.removeEventListener('animationend', onEnterEnd);
+      win.classList.remove('win-window--entering');
+    };
+    win.addEventListener('animationend', onEnterEnd, { once: true });
+    setTimeout(onEnterEnd, 260);
 
     const isTxt = fileId === 'about';
     const docTitle = isTxt ? 'About_Dossier.txt - Identity & Affiliation Dossier' : `${fileId}.pdf - Document Viewer`;
@@ -1084,6 +1133,7 @@ export class DesktopManager {
         <div class="win-title">
           <div class="win-title-icon">${this.getIconHtml(isTxt ? 'txt' : 'pdf')}</div>
           <span>${docTitle}</span>
+          <div class="win-titlebar__telemetry"><span class="telemetry-led"></span><span>SYS.DOC // UTF-8</span></div>
         </div>
         <div class="win-controls">
           <button class="win-ctrl-btn win-ctrl-min" data-action="min" type="button" title="Minimize">—</button>
@@ -1127,6 +1177,7 @@ export class DesktopManager {
     titlebar.addEventListener('mousedown', (e) => {
       if (e.target.closest('.win-controls') || win.classList.contains('is-maximized')) return;
       isDragging = true;
+      win.classList.add('is-dragging');
       startX = e.clientX;
       startY = e.clientY;
       const rect = win.getBoundingClientRect();
@@ -1147,7 +1198,10 @@ export class DesktopManager {
     });
 
     window.addEventListener('mouseup', () => {
-      if (isDragging) isDragging = false;
+      if (isDragging) {
+        isDragging = false;
+        win.classList.remove('is-dragging');
+      }
     });
 
     // Window Resize Grip
@@ -1162,6 +1216,7 @@ export class DesktopManager {
     resizer.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       isResizing = true;
+      win.classList.add('is-resizing');
       rStartX = e.clientX;
       rStartY = e.clientY;
       rStartW = win.offsetWidth;
@@ -1178,7 +1233,10 @@ export class DesktopManager {
     });
 
     window.addEventListener('mouseup', () => {
-      if (isResizing) isResizing = false;
+      if (isResizing) {
+        isResizing = false;
+        win.classList.remove('is-resizing');
+      }
     });
 
     win.querySelector('.win-ctrl-close').addEventListener('click', () => this.closeWindow(id));
@@ -1194,17 +1252,47 @@ export class DesktopManager {
       win.style.zIndex = this.highestZ;
       this.container.querySelectorAll('.win-window').forEach(w => w.classList.remove('is-focused'));
       win.classList.add('is-focused');
+      win.classList.remove('is-minimized', 'win-window--minimizing');
     }
     this.updateTaskbar();
   }
 
   minimizeWindow(id) {
     const win = this.windows.get(id);
-    if (win) {
-      win.classList.add('is-minimized');
-      sound.click(420, 0.02);
+    if (!win) return;
+    if (win.classList.contains('is-minimized') && !win.classList.contains('win-window--minimizing')) return;
+
+    sound.click(420, 0.02);
+    win.classList.remove('win-window--restoring', 'win-window--entering');
+    win.classList.add('win-window--minimizing');
+    win.classList.add('is-minimized');
+    this.updateTaskbar();
+
+    const onMinEnd = () => {
+      win.removeEventListener('animationend', onMinEnd);
+      win.classList.remove('win-window--minimizing');
       this.updateTaskbar();
-    }
+    };
+    win.addEventListener('animationend', onMinEnd, { once: true });
+    setTimeout(onMinEnd, 220);
+  }
+
+  restoreWindow(id) {
+    const win = this.windows.get(id);
+    if (!win) return;
+
+    win.classList.remove('win-window--minimizing', 'is-minimized');
+    win.classList.add('win-window--restoring');
+    sound.click(520, 0.02);
+    this.focusWindow(id);
+
+    const onRestoreEnd = () => {
+      win.removeEventListener('animationend', onRestoreEnd);
+      win.classList.remove('win-window--restoring');
+      this.updateTaskbar();
+    };
+    win.addEventListener('animationend', onRestoreEnd, { once: true });
+    setTimeout(onRestoreEnd, 240);
   }
 
   toggleMaximize(win) {
@@ -1219,29 +1307,58 @@ export class DesktopManager {
       win.style.left = '0px';
       win.style.width = '100%';
       win.style.height = 'calc(100% - 44px)';
-      if (maxBtn) maxBtn.innerHTML = '&#10697;';
+      if (maxBtn) {
+        maxBtn.innerHTML = '&#10697;';
+        maxBtn.title = 'Restore Down';
+      }
     } else {
       win.style.top = win.dataset.restoreTop || '40px';
       win.style.left = win.dataset.restoreLeft || '40px';
       win.style.width = win.dataset.restoreWidth || '900px';
       win.style.height = win.dataset.restoreHeight || '580px';
-      if (maxBtn) maxBtn.innerHTML = '&#9633;';
+      if (maxBtn) {
+        maxBtn.innerHTML = '&#9633;';
+        maxBtn.title = 'Maximize';
+      }
     }
     sound.click(650, 0.02);
   }
 
-  closeWindow(id) {
+  closeWindow(id, { immediate = false } = {}) {
     const win = this.windows.get(id);
-    if (win) {
-      const inst = this.instances.get(id);
-      if (inst?.destroy) inst.destroy();
-      this.instances.delete(id);
+    if (!win) return;
 
-      win.remove();
-      this.windows.delete(id);
-      sound.click(320, 0.03);
-      this.updateTaskbar();
+    const inst = this.instances.get(id);
+    if (inst?.destroy) inst.destroy();
+    this.instances.delete(id);
+
+    this.windows.delete(id);
+    if (this.activeWindowId === id) {
+      this.activeWindowId = null;
+      const remaining = Array.from(this.windows.keys());
+      if (remaining.length > 0) {
+        this.focusWindow(remaining[remaining.length - 1]);
+      }
     }
+    sound.click(320, 0.03);
+    this.updateTaskbar();
+
+    const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (immediate || prefersReduced) {
+      win.remove();
+      return;
+    }
+
+    win.style.pointerEvents = 'none';
+    win.classList.remove('win-window--entering', 'win-window--restoring', 'win-window--minimizing');
+    win.classList.add('win-window--closing');
+
+    const onEnd = () => {
+      win.removeEventListener('animationend', onEnd);
+      win.remove();
+    };
+    win.addEventListener('animationend', onEnd, { once: true });
+    setTimeout(onEnd, 180);
   }
 
   updateTaskbar() {
@@ -1264,6 +1381,7 @@ export class DesktopManager {
 
       return `
         <button class="win-taskbar-tab ${isFocused && !isMin ? 'is-active' : ''} ${isMin ? 'is-min' : ''}" data-task-id="${id}" type="button">
+          <span class="win-tab-status-dot ${isFocused && !isMin ? 'is-active' : ''}"></span>
           <span>${title}</span>
         </button>
       `;
@@ -1274,9 +1392,8 @@ export class DesktopManager {
         const id = btn.dataset.taskId;
         const win = this.windows.get(id);
         if (!win) return;
-        if (win.classList.contains('is-minimized')) {
-          win.classList.remove('is-minimized');
-          this.focusWindow(id);
+        if (win.classList.contains('is-minimized') || win.classList.contains('win-window--minimizing')) {
+          this.restoreWindow(id);
         } else if (this.activeWindowId === id) {
           this.minimizeWindow(id);
         } else {

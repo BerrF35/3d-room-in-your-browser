@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""
+Synchronizes root-level assets and implementations to src/ mirrors.
+Ensures parity between index.html root imports and modular src/ structure.
+"""
+
+def sync():
+    # Sync CSS
+    with open('style.css', 'r', encoding='utf-8') as f:
+        css = f.read()
+    with open('src/styles/main.css', 'w', encoding='utf-8') as f:
+        f.write(css)
+
+    # Sync desktop.js with import path adjustments
+    with open('js/desktop.js', 'r', encoding='utf-8') as f:
+        js = f.read()
+
+    js_src = js.replace("import { sound } from './audio.js';", "import { sound } from '../core/audio.js';")
+    js_src = js_src.replace("import { TerminalEngine } from './terminal.js';", "import { TerminalEngine } from '../apps/terminal.js';")
+    js_src = js_src.replace("import { WindSimulator } from './simWind.js';", "import { WindSimulator } from '../apps/simWind.js';")
+    js_src = js_src.replace("import { RobotSimulator } from './simRobot.js';", "import { RobotSimulator } from '../apps/simRobot.js';")
+    js_src = js_src.replace("import { AgentSimulator } from './simAgent.js';", "import { AgentSimulator } from '../apps/simAgent.js';")
+    js_src = js_src.replace("} from './portfolioData.js';", "} from '../core/portfolioData.js';")
+
+    with open('src/os/desktop.js', 'w', encoding='utf-8') as f:
+        f.write(js_src)
+
+    print('[SYNC] Successfully synchronized style.css -> src/styles/main.css and js/desktop.js -> src/os/desktop.js')
+
+if __name__ == '__main__':
+    sync()

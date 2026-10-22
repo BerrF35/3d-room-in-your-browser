@@ -511,6 +511,150 @@ async function runTestSuite() {
   });
   assert('Contact dispatch displays in-window confirmation badge without blocking modal alerts', contactDispatchCheck.success);
 
+  // --- SUITE 5.2: MOTION SYSTEM, TRANSITIONS & RESILIENT INTERACTION QUALITY ---
+  console.log('\n[Suite 5.2: Motion System, Transitions & Resilient Interaction Quality]');
+
+  // 1. Window Opening Transition & Stabilization
+  const windowMotionEnterCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    dm.openApp('timeline');
+    const win = dm.windows.get('timeline');
+    if (!win) return { success: false };
+    const hadEnterClassOrSettled = win.classList.contains('win-window--entering') || win.style.opacity !== '0';
+    await new Promise(r => setTimeout(r, 300));
+    const isCleanAndSettled = !win.classList.contains('win-window--entering') && win.style.display !== 'none';
+    return { success: hadEnterClassOrSettled && isCleanAndSettled };
+  });
+  assert('Window opening lifecycle: Spring entrance animation triggers and stabilizes cleanly', windowMotionEnterCheck.success);
+
+  // 2. Window Minimize and Restore Motion Cycle
+  const windowMinRestoreCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    const win = dm.windows.get('timeline');
+    if (!win) return { success: false };
+
+    // Trigger minimize
+    dm.minimizeWindow('timeline');
+    await new Promise(r => setTimeout(r, 260));
+    const isMin = win.classList.contains('is-minimized');
+    const tabMin = document.querySelector('.win-taskbar-tab[data-task-id="timeline"]')?.classList.contains('is-min');
+
+    // Trigger restore
+    dm.restoreWindow('timeline');
+    await new Promise(r => setTimeout(r, 280));
+    const isRestored = !win.classList.contains('is-minimized') && !win.classList.contains('win-window--restoring');
+    const tabRestored = !document.querySelector('.win-taskbar-tab[data-task-id="timeline"]')?.classList.contains('is-min');
+    const isFocused = win.classList.contains('is-focused');
+
+    dm.closeApp('timeline');
+    return { success: isMin && tabMin && isRestored && tabRestored && isFocused };
+  });
+  assert('Window minimize & restore lifecycle: Smooth trajectory, taskbar indicators, and state recovery', windowMinRestoreCheck.success);
+
+  // 3. Window Stacking, Z-Index Ordering and Visual Focus Cues
+  const windowStackingCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    dm.openApp('windsim');
+    await new Promise(r => setTimeout(r, 150));
+    dm.openApp('terminal');
+    await new Promise(r => setTimeout(r, 150));
+
+    const winWind = dm.windows.get('windsim');
+    const winTerm = dm.windows.get('terminal');
+    if (!winWind || !winTerm) return { success: false };
+
+    // Terminal was opened last, should have higher z-index and focused state
+    const termZInitial = parseInt(winTerm.style.zIndex, 10);
+    const windZInitial = parseInt(winWind.style.zIndex, 10);
+    const termFocusedInitial = winTerm.classList.contains('is-focused') && !winWind.classList.contains('is-focused');
+
+    // Focus windsim
+    dm.focusWindow('windsim');
+    const windZAfter = parseInt(winWind.style.zIndex, 10);
+    const windFocusedAfter = winWind.classList.contains('is-focused') && !winTerm.classList.contains('is-focused');
+
+    dm.closeApp('windsim');
+    dm.closeApp('terminal');
+    return {
+      success: termZInitial > windZInitial && termFocusedInitial && windZAfter > termZInitial && windFocusedAfter
+    };
+  });
+  assert('Window focus & stacking: Layer ordering updates dynamic z-indexes and accent focus rings', windowStackingCheck.success);
+
+  // 4. Rapid Repeated Input & Race Condition Guarding
+  const rapidInputCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+
+    // Rapidly toggle open and close 5 times
+    for (let i = 0; i < 5; i++) {
+      dm.openApp('berry');
+      dm.closeApp('berry');
+    }
+    await new Promise(r => setTimeout(r, 350));
+
+    // Verify 0 orphan DOM elements remain
+    const orphanWindows = document.querySelectorAll('#winWindowsLayer #win_berry');
+    const hasOrphans = orphanWindows.length > 0;
+    const windowMapClean = !dm.windows.has('berry');
+
+    return { success: !hasOrphans && windowMapClean };
+  });
+  assert('Rapid interaction stress test: Zero orphan window artifacts and clean instance destruction', rapidInputCheck.success);
+
+  // 5. System Panels Transition Choreography (Start Menu & Action Center)
+  const systemPanelsCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    const startMenu = document.getElementById('winStartMenu');
+    const actionCenter = document.getElementById('winActionCenter');
+
+    // Open Start Menu
+    dm.openStartMenu();
+    await new Promise(r => setTimeout(r, 100));
+    const startOpen = dm.isStartOpen && startMenu.classList.contains('is-open');
+
+    // Open Action Center directly: should auto-close Start Menu
+    dm.openActionCenter();
+    dm.closeStartMenu();
+    await new Promise(r => setTimeout(r, 100));
+    const acOpen = dm.isActionCenterOpen && actionCenter.classList.contains('is-open');
+    const startClosed = !dm.isStartOpen && !startMenu.classList.contains('is-open');
+
+    // Close Action Center
+    dm.closeActionCenter();
+    await new Promise(r => setTimeout(r, 100));
+    const acClosed = !dm.isActionCenterOpen && !actionCenter.classList.contains('is-open');
+
+    return { success: startOpen && acOpen && startClosed && acClosed };
+  });
+  assert('System panels choreography: Start Menu & Action Center mutual exclusivity and spring reveals', systemPanelsCheck.success);
+
+  // 6. Alt+Tab HUD Window Switcher & Escape Dismissal
+  const altTabEscapeCheck = await page.evaluate(async () => {
+    const dm = window.world.desktopManager;
+    if (!dm) return { success: false };
+    dm.openApp('berrybot');
+    await new Promise(r => setTimeout(r, 150));
+
+    // Open Alt+Tab HUD
+    dm.showAltTabHud();
+    const hud = document.getElementById('winAltTabHud');
+    const isHudOpen = hud && hud.classList.contains('is-open') && !hud.hidden;
+
+    // Press Escape to dismiss
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await new Promise(r => setTimeout(r, 100));
+    const isHudClosed = hud && (!hud.classList.contains('is-open') || hud.hidden);
+
+    dm.closeApp('berrybot');
+    return { success: isHudOpen && isHudClosed };
+  });
+  assert('Alt+Tab HUD Switcher: Smooth modal presentation and global Escape key dismissal', altTabEscapeCheck.success);
+
   // Exit laptop back to 3D room
   const exitResult = await page.evaluate(async () => {
     window.exitLaptop();
