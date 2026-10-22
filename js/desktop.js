@@ -79,6 +79,14 @@ export class DesktopManager {
         return `<svg ${s} class="win-svg win-svg--robot"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>`;
       case 'cmd':
         return `<svg ${s} class="win-svg win-svg--cmd"><rect x="2" y="4" width="20" height="16" rx="2"></rect><polyline points="6 9 10 12 6 15"></polyline><line x1="12" y1="15" x2="18" y2="15"></line></svg>`;
+      case 'sim':
+        return `<svg ${s} class="win-svg win-svg--sim"><rect x="2" y="3" width="20" height="18" rx="2"></rect><line x1="2" y1="9" x2="22" y2="9"></line><line x1="2" y1="15" x2="22" y2="15"></line><line x1="8" y1="9" x2="8" y2="15"></line><line x1="16" y1="9" x2="16" y2="15"></line></svg>`;
+      case 'voice':
+        return `<svg ${s} class="win-svg win-svg--voice"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`;
+      case 'data':
+        return `<svg ${s} class="win-svg win-svg--data"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>`;
+      case 'brain':
+        return `<svg ${s} class="win-svg win-svg--brain"><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="18" r="3"></circle><line x1="8.5" y1="7.5" x2="15.5" y2="16.5"></line><line x1="8.5" y1="16.5" x2="15.5" y2="7.5"></line></svg>`;
       case 'game':
       case 'timeline':
         return `<svg ${s} class="win-svg win-svg--timeline"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
@@ -992,6 +1000,14 @@ export class DesktopManager {
     let defaultWidth = '920px';
     let defaultHeight = '600px';
 
+    if (PROJECTS[appId]) {
+      const p = PROJECTS[appId];
+      title = `${p.title} — ${p.subtitle}`;
+      iconType = p.iconType || (appId === 'windsim' ? 'wind' : appId === 'berry' ? 'ai' : appId.includes('bot') ? 'robot' : 'cmd');
+      defaultWidth = '960px';
+      defaultHeight = '620px';
+    }
+
     if (appId === 'windsim') {
       title = 'WindSim — Real-Time LBM CFD Aerodynamics Platform';
       iconType = 'wind';
@@ -1003,10 +1019,45 @@ export class DesktopManager {
       defaultWidth = '940px';
       defaultHeight = '610px';
     } else if (appId === 'berrybot') {
-      title = 'BerryBot — Tracked Autonomous Robotics Platform';
+      title = 'AutoBot / BerryBot — 12-Layer Tracked Autonomous Robotics Platform';
       iconType = 'robot';
       defaultWidth = '960px';
       defaultHeight = '630px';
+    } else if (appId === 'filesim') {
+      title = 'File Allocation Simulator — Visual OS Storage Architecture (React 19 / Vitest)';
+      iconType = 'sim';
+      defaultWidth = '960px';
+      defaultHeight = '620px';
+    } else if (appId === 'speaksafe') {
+      title = 'SpeakSafe — AI Voice Forensics & Deepfake Detection Platform';
+      iconType = 'voice';
+      defaultWidth = '940px';
+      defaultHeight = '610px';
+    } else if (appId === 'spherical_bot') {
+      title = 'Spherical Bot (BALLZ) — Inverted Pendulum Spherical Robot Telemetry';
+      iconType = 'robot';
+      defaultWidth = '940px';
+      defaultHeight = '610px';
+    } else if (appId === 'synthetic_data_gen') {
+      title = 'Synthetic Data Generator — Local Tabular Data Generation & PII Masking';
+      iconType = 'data';
+      defaultWidth = '940px';
+      defaultHeight = '610px';
+    } else if (appId === 'perfmon') {
+      title = 'Performance Monitor — Real-Time Windows System & Process Telemetry';
+      iconType = 'data';
+      defaultWidth = '940px';
+      defaultHeight = '610px';
+    } else if (appId === 'agentic_rag') {
+      title = 'Agentic RAG — Frameworkless Multi-Hop QA ReAct Loop';
+      iconType = 'brain';
+      defaultWidth = '920px';
+      defaultHeight = '600px';
+    } else if (appId === 'gesturecontrol') {
+      title = 'GestureControlPC — OpenCV + MediaPipe Computer Vision Automation';
+      iconType = 'cmd';
+      defaultWidth = '920px';
+      defaultHeight = '600px';
     } else if (appId === 'impactx') {
       title = 'ImpactX 3.0 — 3rd Place Overall Hackathon Case File';
       iconType = 'txt';
@@ -1018,7 +1069,7 @@ export class DesktopManager {
       defaultWidth = '880px';
       defaultHeight = '560px';
     } else if (appId === 'vinhack') {
-      title = 'VinHack 25 — Peer-to-Peer Academic Resource Exchange';
+      title = 'PustakLink (VinHack 2025) — Peer-to-Peer Academic Resource Exchange';
       iconType = 'txt';
       defaultWidth = '880px';
       defaultHeight = '560px';

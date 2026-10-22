@@ -24,7 +24,8 @@ export class TerminalEngine {
       'whoami', 'about', 'dossier', 'projects', 'research', 'hardware', 'cad',
       'hackathons', 'skills', 'stack', 'contact', 'timeline', 'github', 'linkedin',
       'systeminfo', 'neofetch', 'theme', 'bench', 'room', 'volume', 'ver', 'date', 'time',
-      'windsim', 'berry', 'berrybot', 'impactx', 'farmassist', 'vinhack', 'explorer', 'matrix'
+      'windsim', 'filesim', 'berrybot', 'berry', 'speaksafe', 'spherical', 'synthetic',
+      'perfmon', 'rag', 'gesture', 'impactx', 'farmassist', 'vinhack', 'explorer', 'matrix'
     ];
 
     this.fs = {
@@ -237,17 +238,20 @@ APPLICATION LAUNCHERS:
 ================================================================================
 Name:         ${IDENTITY.name} (${IDENTITY.handle})
 Institution:  ${IDENTITY.university}
-Degree:       ${IDENTITY.degree} (${IDENTITY.cohort})
+Degree:       ${IDENTITY.degree} (Cohort: ${IDENTITY.cohort})
+Reg No:       ${IDENTITY.regNo || '25BIT0235'}
 Location:     ${IDENTITY.location}
 Email:        ${IDENTITY.email} | Phone: ${IDENTITY.phone}
 GitHub:       ${IDENTITY.github}
 LinkedIn:     ${IDENTITY.linkedin}
 
-CORE ENGINEERING FOCUS:
-  1. Scientific Simulation: Real-Time Lattice Boltzmann Method (LBM D2Q9) CFD.
-  2. Autonomous Robotics: SolidWorks CAD, Dual-Core ESP32 20kHz PWM, Closed-Loop PID.
-  3. Local-First AI: Air-Gapped Desktop Agent with Computer-Use Automation (CUA).
-  4. Academic Research: 3 Papers in preparation with Faculty Research Group.
+CORE ENGINEERING ARSENAL:
+  1. Scientific Simulation: Real-Time Lattice Boltzmann Method (LBM D2Q9) CFD (WindSim).
+  2. Operating System Architecture: Visual File Allocation Simulator (AetherOS FS-SIM).
+  3. Embedded Robotics: AutoBot 12-Layer Tracked OS &amp; BALLZ Inverted Pendulum (ESP32/FreeRTOS).
+  4. Speech &amp; Vision Forensics: SpeakSafe AI Detector &amp; GestureControlPC Automation.
+  5. Local AI &amp; Agents: Air-Gapped Desktop Agent (Berry AI) &amp; Synthetic Data Generator CLI.
+  6. Academic Research: Spectral Color Splitter, Domain Randomization, and Edge Vision.
 ================================================================================
 </pre>
         `);
@@ -257,14 +261,21 @@ CORE ENGINEERING FOCUS:
         this.appendLine(`
 <pre style="margin:0; font-family:inherit; color:#cbd5e1;">
 VERIFIED PROJECT REPOSITORY:
-  1. WINDSIM     LBM D2Q9 CFD Aerodynamics Platform [Flagship / Live]
-  2. BERRY AI    Local Desktop Assistant &amp; OS Sidecar [Python / AGPL-3.0]
-  3. BERRYBOT    Tracked Autonomous Robotics Platform [ESP32 / SolidWorks]
-  4. IMPACTX     ImpactX 3.0 Hackathon [3rd Place Overall Winner]
-  5. FARMASSIST  FarmAssist AI Crop Diagnostics [Yantra 26 Hackathon]
-  6. VINHACK     Peer-to-Peer Academic Resource Exchange [VinHack 25]
+  1. WINDSIM     Real-Time LBM D2Q9 CFD Aerodynamics Platform [Flagship / Live]
+  2. FILESIM     Visual OS Storage Allocation Simulator [React 19 / Vitest]
+  3. BERRYBOT    AutoBot 12-Layer Tracked Robotics OS &amp; Tactical HUD [ESP32]
+  4. BERRY AI    Local Desktop Assistant &amp; OS Sidecar [Python / AGPL-3.0]
+  5. SPEAKSAFE   AI-Generated Speech Forensics &amp; Deepfake Detection [FastAPI]
+  6. SPHERICAL   BALLZ Pendulum-Driven Spherical Autonomous Robot [FreeRTOS]
+  7. SYNTHETIC   Local Tabular Data Generator CLI [CTGAN / PII Masking]
+  8. PERFMON     Real-Time Windows OS Telemetry Dashboard [Electron / React]
+  9. RAG         Frameworkless Multi-Hop QA ReAct Loop From Scratch
+  10. GESTURE    OpenCV + MediaPipe PC Automation via Vision &amp; Gestures
+  11. IMPACTX    ImpactX 3.0 Hackathon [3rd Place Overall Winner]
+  12. FARMASSIST FarmAssist AI Crop Diagnostics [Yantra 26 Hackathon]
+  13. VINHACK    PustakLink P2P Academic Resource Exchange [VinHack 25]
 
-Type any project name (e.g. 'windsim' or 'berrybot') to launch its technical case file.
+Type any project name (e.g. 'filesim', 'speaksafe', 'windsim', 'spherical') to launch its technical case file.
 </pre>
         `);
         break;
@@ -458,6 +469,49 @@ DIRECT CONTACT &amp; DISPATCH:
       case 'berrybot.exe':
         this.appendLine('Launching BerryBot Tracked Autonomous Robotics Platform...');
         this.onSim?.('berrybot');
+        break;
+
+      case 'filesim':
+      case 'filesim.exe':
+        this.appendLine('Launching File Allocation Simulator (AetherOS FS-SIM)...');
+        this.onSim?.('filesim');
+        break;
+
+      case 'speaksafe':
+      case 'speaksafe.exe':
+        this.appendLine('Opening SpeakSafe Speech Forensics Platform...');
+        this.onSim?.('speaksafe');
+        break;
+
+      case 'spherical':
+      case 'spherical_bot':
+      case 'ballz':
+        this.appendLine('Opening Spherical Bot (BALLZ) Robotics Case File...');
+        this.onSim?.('spherical_bot');
+        break;
+
+      case 'synthetic':
+      case 'synthetic_data_gen':
+        this.appendLine('Opening Synthetic Data Generator Case File...');
+        this.onSim?.('synthetic_data_gen');
+        break;
+
+      case 'perfmon':
+      case 'perfmon.exe':
+        this.appendLine('Opening Performance Monitor Telemetry Case File...');
+        this.onSim?.('perfmon');
+        break;
+
+      case 'rag':
+      case 'agentic_rag':
+        this.appendLine('Opening Agentic RAG Case File...');
+        this.onSim?.('agentic_rag');
+        break;
+
+      case 'gesture':
+      case 'gesturecontrol':
+        this.appendLine('Opening GestureControlPC Case File...');
+        this.onSim?.('gesturecontrol');
         break;
 
       case 'impactx':

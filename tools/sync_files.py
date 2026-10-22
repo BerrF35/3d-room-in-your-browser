@@ -25,7 +25,21 @@ def sync():
     with open('src/os/desktop.js', 'w', encoding='utf-8') as f:
         f.write(js_src)
 
-    print('[SYNC] Successfully synchronized style.css -> src/styles/main.css and js/desktop.js -> src/os/desktop.js')
+    # Sync portfolioData.js
+    with open('js/portfolioData.js', 'r', encoding='utf-8') as f:
+        data_js = f.read()
+    with open('src/core/portfolioData.js', 'w', encoding='utf-8') as f:
+        f.write(data_js)
+
+    # Sync terminal.js with import path adjustments
+    with open('js/terminal.js', 'r', encoding='utf-8') as f:
+        term_js = f.read()
+    term_src = term_js.replace("import { sound } from './audio.js';", "import { sound } from '../core/audio.js';")
+    term_src = term_src.replace("} from './portfolioData.js';", "} from '../core/portfolioData.js';")
+    with open('src/apps/terminal.js', 'w', encoding='utf-8') as f:
+        f.write(term_src)
+
+    print('[SYNC] Successfully synchronized style.css, js/desktop.js, js/portfolioData.js, and js/terminal.js to src/')
 
 if __name__ == '__main__':
     sync()
